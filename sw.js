@@ -2,8 +2,8 @@ const CACHE_NAME = 'science-lab-v1';
 const urlsToCache = [
   '/science-lab-booking/',
   '/science-lab-booking/index.html',
-  '/science-lab-booking/images/icon-192.png',
-  '/science-lab-booking/images/icon-512.png'
+  '/science-lab-booking/icon-192.png',
+  '/science-lab-booking/icon-512.png'
 ];
 
 // التثبيت: تخزين الملفات الأساسية
