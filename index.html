@@ -84,9 +84,7 @@
 <source src="https://actions.google.com/sounds/v1/notifications/notification_simple-01.mp3">
 </audio>
 <script>
-// ✅ تأكد من عدم وجود مسافة في النهاية
 const API = "https://script.google.com/macros/s/AKfycby_fbgm9DweHvibXTAP7_YbZxvjVL0INFWd80oGJf6fJYxGPvkxIK1dBnHjw4WDdPA0sg/exec";
-
 const $ = id => document.getElementById(id);
 
 function showToast(msg, ok = true) {
@@ -99,7 +97,11 @@ function showToast(msg, ok = true) {
 }
 
 function today() {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`; // تنسيق: 2025-02-02
 }
 
 function formData(extra = {}) {
@@ -117,22 +119,21 @@ function formData(extra = {}) {
 function addBooking() {
   fetch(API, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData({ action: "add" })
   })
   .then(r => r.json())
   .then(d => {
+    console.log("Add response:", d); // للتصحيح
     showToast(d.message, d.success);
     if (d.success) {
       clearForm();
-      loadToday();
+      setTimeout(loadToday, 1000); // انتظر ثانية ثم حمل البيانات
     }
   })
   .catch(err => {
-    console.error(err);
-    showToast("فشل الاتصال بالخادم", false);
+    console.error("Add error:", err);
+    showToast("فشل الاتصال", false);
   });
 }
 
@@ -141,9 +142,7 @@ function updateBooking() {
   
   fetch(API, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData({ action: "update", id: $("bookingId").value })
   })
   .then(r => r.json())
@@ -154,10 +153,7 @@ function updateBooking() {
       loadToday();
     }
   })
-  .catch(err => {
-    console.error(err);
-    showToast("فشل الاتصال بالخادم", false);
-  });
+  .catch(err => showToast("فشل الاتصال", false));
 }
 
 function deleteBooking() {
@@ -165,9 +161,7 @@ function deleteBooking() {
   
   fetch(API, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ action: "delete", id: $("bookingId").value }).toString()
   })
   .then(r => r.json())
@@ -178,10 +172,7 @@ function deleteBooking() {
       loadToday();
     }
   })
-  .catch(err => {
-    console.error(err);
-    showToast("فشل الاتصال بالخادم", false);
-  });
+  .catch(err => showToast("فشل الاتصال", false));
 }
 
 function clearForm() {
@@ -194,25 +185,35 @@ function clearForm() {
 }
 
 function loadToday() {
-  const params = new URLSearchParams({
-    action: "getToday",
-    date: today()
-  });
-
-  fetch(API + "?" + params.toString(), {
-    method: "GET"
+  const currentDate = $("date").value || today();
+  const url = API + "?action=getToday&date=" + currentDate;
+  
+  console.log("Fetching:", url); // للتصحيح
+  console.log("Date sent:", currentDate); // للتصحيح
+  
+  fetch(url)
+  .then(r => {
+    console.log("Response status:", r.status); // للتصحيح
+    return r.json();
   })
-  .then(r => r.json())
   .then(d => {
+    console.log("Data received:", d); // للتصحيح
+    
     const box = $("bookings");
     box.innerHTML = "";
     
+    if (!d.success) {
+      box.innerHTML = "<p style='color:red; text-align:center;'>خطأ: " + (d.message || "غير معروف") + "</p>";
+      return;
+    }
+    
     if (!d.bookings || d.bookings.length === 0) {
-      box.innerHTML = "<p style='text-align:center; color:#666;'>لا توجد حجوزات اليوم</p>";
+      box.innerHTML = "<p style='text-align:center; color:#666;'>لا توجد حجوزات اليوم (" + currentDate + ")</p>";
       return;
     }
     
     d.bookings.forEach(b => {
+      console.log("Booking:", b); // للتصحيح
       const div = document.createElement("div");
       div.className = "booking";
       div.innerHTML = `
@@ -226,7 +227,7 @@ function loadToday() {
     });
   })
   .catch(err => {
-    console.error(err);
+    console.error("Load error:", err);
     $("bookings").innerHTML = "<p style='color:red; text-align:center;'>فشل تحميل الحجوزات</p>";
   });
 }
@@ -244,10 +245,6 @@ function fillForm(b) {
 // التحميل الأولي
 $("date").value = today();
 loadToday();
-
-// تحديث تلقائي كل 30 ثانية
-setInterval(loadToday, 30000);
 </script>
-
 </body>
 </html>
