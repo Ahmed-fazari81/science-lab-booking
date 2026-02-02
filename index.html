@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <title>حجز مختبر العلوم</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   
-  <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="#0d6efd">
+  <!-- PWA Meta Tags - مرتبة بشكل صحيح لمنع التحذير -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="مختبر العلوم">
+  <meta name="theme-color" content="#0d6efd">
   
   <!-- Manifest -->
   <link rel="manifest" href="manifest.json">
@@ -40,6 +41,19 @@
     .booking{ background:#f8f9fa; padding:12px; border-radius:10px; border-right:5px solid #0d6efd; cursor:pointer; }
     .toast{ position:fixed; bottom:20px; right:20px; background:#198754; color:#fff; padding:12px 18px; border-radius:10px; opacity:0; transform:translateY(20px); transition:.3s; z-index:1000; }
     .toast.show{ opacity:1; transform:translateY(0); }
+    
+    /* تحسينات للموبايل */
+    @media (max-width: 600px) {
+      .container { padding: 8px; }
+      .card { padding: 12px; margin-bottom: 12px; }
+      h2 { font-size: 16px; }
+      button { font-size: 14px; padding: 10px; }
+      input, select, textarea { font-size: 16px; }
+      header { font-size: 18px; padding: 12px; }
+    }
+    
+    /* منع التكبير غير المرغوب فيه على iOS */
+    input, select, textarea, button { touch-action: manipulation; }
   </style>
 </head>
 
@@ -98,6 +112,7 @@
 <audio id="sound">
 <source src="https://actions.google.com/sounds/v1/notifications/notification_simple-01.mp3">
 </audio>
+
 <script>
 const API = "https://script.google.com/macros/s/AKfycby_fbgm9DweHvibXTAP7_YbZxvjVL0INFWd80oGJf6fJYxGPvkxIK1dBnHjw4WDdPA0sg/exec";
 const $ = id => document.getElementById(id);
@@ -116,7 +131,7 @@ function today() {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`; // تنسيق: 2025-02-02
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function formData(extra = {}) {
@@ -139,11 +154,11 @@ function addBooking() {
   })
   .then(r => r.json())
   .then(d => {
-    console.log("Add response:", d); // للتصحيح
+    console.log("Add response:", d);
     showToast(d.message, d.success);
     if (d.success) {
       clearForm();
-      setTimeout(loadToday, 1000); // انتظر ثانية ثم حمل البيانات
+      setTimeout(loadToday, 1000);
     }
   })
   .catch(err => {
@@ -203,17 +218,9 @@ function loadToday() {
   const currentDate = $("date").value || today();
   const url = API + "?action=getToday&date=" + currentDate;
   
-  console.log("Fetching:", url); // للتصحيح
-  console.log("Date sent:", currentDate); // للتصحيح
-  
   fetch(url)
-  .then(r => {
-    console.log("Response status:", r.status); // للتصحيح
-    return r.json();
-  })
+  .then(r => r.json())
   .then(d => {
-    console.log("Data received:", d); // للتصحيح
-    
     const box = $("bookings");
     box.innerHTML = "";
     
@@ -228,7 +235,6 @@ function loadToday() {
     }
     
     d.bookings.forEach(b => {
-      console.log("Booking:", b); // للتصحيح
       const div = document.createElement("div");
       div.className = "booking";
       div.innerHTML = `
@@ -260,40 +266,29 @@ function fillForm(b) {
 // التحميل الأولي
 $("date").value = today();
 loadToday();
-</script>
-  <!-- PWA Registration -->
-<script>
-  // تسجيل Service Worker
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
-        .then((registration) => {
-          console.log('SW registered:', registration);
-        })
-        .catch((error) => {
-          console.log('SW registration failed:', error);
-        });
-    });
-  }
 
-  // التحقق من الاتصال بالإنترنت
-  function checkOnlineStatus() {
-    if (!navigator.onLine) {
-      showToast('⚠️ لا يوجد اتصال بالإنترنت. يرجى الاتصال للمتابعة', false);
-    }
-  }
-
-  window.addEventListener('online', () => {
-    showToast('✓ تم استعادة الاتصال بالإنترنت', true);
-    loadToday(); // إعادة تحميل البيانات
+// PWA Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then((registration) => {
+        console.log('SW registered:', registration);
+      })
+      .catch((error) => {
+        console.log('SW registration failed:', error);
+      });
   });
+}
 
-  window.addEventListener('offline', () => {
-    showToast('⚠️ فقدت الاتصال بالإنترنت', false);
-  });
+// التحقق من الاتصال
+window.addEventListener('online', () => {
+  showToast('✓ تم استعادة الاتصال بالإنترنت', true);
+  loadToday();
+});
 
-  // فحص عند بدء التشغيل
-  window.addEventListener('load', checkOnlineStatus);
+window.addEventListener('offline', () => {
+  showToast('⚠️ فقدت الاتصال بالإنترنت', false);
+});
 </script>
 </body>
 </html>
