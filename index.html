@@ -246,11 +246,9 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<audio id="sound">
-<source src="https://actions.google.com/sounds/v1/notifications/notification_simple-01.mp3">
-</audio>
 
 <script>
+// ✅ بدون مسافة في النهاية
 const API = "https://script.google.com/macros/s/AKfycby_fbgm9DweHvibXTAP7_YbZxvjVL0INFWd80oGJf6fJYxGPvkxIK1dBnHjw4WDdPA0sg/exec";
 const $ = id => document.getElementById(id);
 
@@ -259,11 +257,9 @@ function showToast(msg, ok = true) {
   t.textContent = msg;
   t.style.background = ok ? "#198754" : "#dc3545";
   t.classList.add("show");
-  $("sound").play();
   setTimeout(() => t.classList.remove("show"), 3000);
 }
 
-// ✅ دالة today() دائماً ترجع yyyy-mm-dd
 function today() {
   const d = new Date();
   const yyyy = d.getFullYear();
@@ -272,38 +268,40 @@ function today() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// ✅ دالة توحيد أي تاريخ (محلي أو ISO)
 function normalizeDate(dateStr) {
   if (!dateStr) return today();
   
+  // تحويل إلى نص وتنظيفه
+  let str = dateStr.toString().trim();
+  
   // إذا كان yyyy-mm-dd بالفعل
-  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    return dateStr;
+  if (str.length === 10 && str[4] === '-' && str[7] === '-') {
+    return str;
   }
   
   // إذا كان يحتوي على / (تنسيق محلي)
-  if (dateStr.includes('/')) {
-    // إزالة الأحرف غير الرقمية (مثل الأرقام العربية)
-    const cleanDate = dateStr.replace(/[^\d\/]/g, '');
-    const parts = cleanDate.split('/');
-    
-    // dd/mm/yyyy أو yyyy/mm/dd
+  if (str.includes('/')) {
+    const parts = str.split('/');
     if (parts.length === 3) {
-      if (parts[0].length === 4) {
+      // تنظيف كل جزء
+      const p0 = parts[0].replace(/\D/g, '');
+      const p1 = parts[1].replace(/\D/g, '');
+      const p2 = parts[2].replace(/\D/g, '');
+      
+      if (p0.length === 4) {
         // yyyy/mm/dd
-        return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+        return `${p0}-${p1.padStart(2,'0')}-${p2.padStart(2,'0')}`;
       } else {
         // dd/mm/yyyy
-        return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+        return `${p2}-${p1.padStart(2,'0')}-${p0.padStart(2,'0')}`;
       }
     }
   }
   
-  return dateStr;
+  return str;
 }
 
 function formData(extra = {}) {
-  // ✅ توحيد التاريخ قبل الإرسال
   const rawDate = $("date").value;
   const normalizedDate = normalizeDate(rawDate);
   
@@ -331,14 +329,15 @@ function addBooking() {
   })
   .then(r => r.json())
   .then(d => {
+    console.log("Add response:", d);
     showToast(d.message, d.success);
     if (d.success) {
       clearForm();
-      loadToday();
+      setTimeout(loadToday, 500);
     }
   })
   .catch(err => {
-    console.error(err);
+    console.error("Add error:", err);
     showToast("فشل الاتصال", false);
   });
 }
@@ -393,15 +392,20 @@ function clearForm() {
 }
 
 function loadToday() {
-  // ✅ توحيد تاريخ البحث
   const rawDate = $("date").value;
   const currentDate = normalizeDate(rawDate);
   
-  const url = API + "?action=getToday&date=" + currentDate;
+  console.log("Loading bookings for date:", currentDate);
+  
+  const url = API + "?action=getToday&date=" + encodeURIComponent(currentDate);
   
   fetch(url)
-  .then(r => r.json())
+  .then(r => {
+    console.log("Response status:", r.status);
+    return r.json();
+  })
   .then(d => {
+    console.log("Data received:", d);
     const box = $("bookings");
     box.innerHTML = "";
     
@@ -430,7 +434,7 @@ function loadToday() {
     });
   })
   .catch(err => {
-    console.error(err);
+    console.error("Load error:", err);
     $("bookings").innerHTML = "<p style='color:red; text-align:center;'>فشل الاتصال بالخادم</p>";
   });
 }
@@ -473,12 +477,12 @@ window.addEventListener('offline', () => {
   showToast('⚠️ فقدت الاتصال بالإنترنت', false);
 });
 
-// ✅ التحديث التلقائي كل 10 ثواني
+// التحديث التلقائي كل 10 ثواني
 setInterval(() => {
   loadToday();
 }, 10000);
 
-// ✅ التحديث عند العودة للتطبيق
+// التحديث عند العودة للتطبيق
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     loadToday();
