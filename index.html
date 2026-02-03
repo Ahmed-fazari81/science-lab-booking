@@ -432,7 +432,17 @@ function fillForm(b) {
 // التحميل الأولي
 $("date").value = today();
 loadToday();
+// ✅ التحديث التلقائي كل 30 ثانية
+setInterval(() => {
+  loadToday();
+}, 30000);
 
+// ✅ التحديث عند العودة للتطبيق (للجوال)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    loadToday();
+  };
+});
 // PWA Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
